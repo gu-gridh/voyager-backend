@@ -13,7 +13,7 @@ def run():
 
     with open(CONFIG_PATH, 'r') as f:
             CONFIG = yaml.safe_load(f)
-    bbox = CONFIG['example']
+
     traverser = voyager.Traverser(vessel_config=CONFIG['vessels']['path'], 
                                   data_directory=CONFIG['data']['path'],
                                  **CONFIG['example'])
