@@ -49,8 +49,8 @@ def trajectory():
             # Create the chart
             # Should possibly be pre-computed if computation is too slow
             chart = voyager.Chart(params['bbox'], 
-                                params['start_date'].strftime('%Y-%m-%d'), 
-                                params['end_date'].strftime('%Y-%m-%d')).load(cfg['data']['path'], **cfg['chart'])
+                                params['start_date'], 
+                                params['end_date']).load(cfg['data']['path'], **cfg['chart'])
 
             # Create the model that steps throught time
             model = voyager.Model(params['duration'], params['timestep'], **cfg['model'])
