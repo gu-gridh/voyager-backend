@@ -1,37 +1,78 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, url_for
+from flask_cors import cross_origin
 import voyager
-import yaml
 import dask
 import utils
 
-CONFIG_PATH = './configs/config.yml'
+CONFIG_PATH         = './configs/config.yml'
+VESSEL_CONFIG_PATH  = './configs/vessels.yml'
 
 app = Flask(__name__)
 
+@app.route('/api/vessels/', methods=['GET'])
+@cross_origin()
+def vessel_config():
 
-@app.route('/voyager', methods=['GET'])
-def run():
+    # Load the vessel configuration
+    vessel_cfg = utils.load_yaml(VESSEL_CONFIG_PATH)
 
-    # http://127.0.0.1:5000/voyager?start_date=2017-01-01&end_date=2017-01-30&launch_freq=8&duration=7&timestep=3600&mode=sailing&craft=2&destination=2.347&destination=52.084&departure_points=4.474&departure_points=58.962&departure_points=7.655&departure_points=54.718&bbox=-10&bbox=20&bbox=45&bbox=65
+    # Fetch the API parameters
+    mode = request.args.get('mode', None)
+    idx  = request.args.get('id', None)
 
+    # Two different modes:
+    # One lists all vessel ids based on the mode of propulsion
+    # The second lists a specific vessel given id and mode of propulsion
+    if not idx:
+        vessel = vessel_cfg.get(mode, {})
+        vessel = [{'id': k, ** v} for k, v in vessel.items()]
+    else:
+        vessel = vessel_cfg.get(mode, {}).get(int(idx), {})
+
+    return jsonify(vessel)
+
+
+@app.route('/api/trajectory/', methods=['GET'])
+@cross_origin()
+def trajectory():
+
+    # Load the general backend configuration
+    cfg         = utils.load_yaml(CONFIG_PATH)
+    vessel_cfg  = utils.load_yaml(VESSEL_CONFIG_PATH)
+
+    # Fetch the API parameters
     params = utils.parse_query_string(request.args)
-    print(params)
 
-    with open(CONFIG_PATH, 'r') as f:
-            CONFIG = yaml.safe_load(f)
+    if params:
+        with dask.config.set(**cfg['dask']):
 
-    traverser = voyager.Traverser(vessel_config=CONFIG['vessels']['path'], 
-                                  data_directory=CONFIG['data']['path'],
-                                 **params)
+            # Create the chart
+            # Should possibly be pre-computed if computation is too slow
+            chart = voyager.Chart(params['bbox'], 
+                                params['start_date'].strftime('%Y-%m-%d'), 
+                                params['end_date'].strftime('%Y-%m-%d')).load(cfg['data']['path'], **cfg['chart'])
 
-    with dask.config.set(**CONFIG['dask']):
+            # Create the model that steps throught time
+            model = voyager.Model(params['duration'], params['timestep'], **cfg['model'])
 
-        results = traverser.run(model_kwargs = CONFIG['model'],
-                                chart_kwargs = CONFIG['chart'])
-            
-        dicts = voyager.utils.to_GeoJSON(results)
+            # Calculate the trajectories
+            results = voyager.Traverser.trajectory(
+                mode = params['mode'],
+                craft = params['craft'], 
+                duration = params['duration'],
+                timestep = params['timestep'], 
+                destination = params['destination'], 
+                speed = params['speed'], 
+                bbox = params['bbox'], 
+                departure_point = params['departure_point'], 
+                vessel_params=vessel_cfg,
+                chart = chart, 
+                model = model
+            )
 
-        return jsonify(dicts)
+            return jsonify(results)
+    else:
+        return jsonify([{}])
 
 if __name__ == '__main__':
-    app.run(port=5000)
+    app.run(host='0.0.0.0', port=5000)
