@@ -1,2 +1,2 @@
 # voyager-backend
-A backend for the Voyager ocean modelling project
+A backend and API service for serving the Voyager application
