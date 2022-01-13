@@ -1,6 +1,7 @@
 from typing import Optional, List
 from enum import Enum
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware import Middleware
 from fastapi.middleware.cors import CORSMiddleware
 import voyager
 import utils
@@ -18,21 +19,14 @@ Mode = Enum('Mode', {k: k for k in vessel_cfg.keys()})
 
 
 ######### CONFIGURE APPLICATION ###############
-app = FastAPI()
-origins = [
-    "http://localhost",
-    "http://localhost:8080",
-    "https://voyager.dh.gu.se"
-]
+middleware = [Middleware(CORSMiddleware, 
+                        allow_origins=['*'], 
+                        allow_credentials=True, 
+                        allow_methods=['*'], 
+                        allow_headers=['*'])]
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    # allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(middleware=middleware)
+
 
 
 @app.get("/api/vessels/")
