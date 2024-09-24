@@ -1,0 +1,4 @@
+gunicorn<24
+fastapi<1
+git+https://github.com/waahlstrand/voyager
+pandas
