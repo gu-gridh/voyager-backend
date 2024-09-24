@@ -2,7 +2,7 @@ vessels:
   path: './configs/vessels.yml'
 
 data:
-  path: '/mnt/cdh/voyager'
+  path: '/data/cdhdata/voyager'
 
 chart:
   weights: [200, 50, 10, 500]
